@@ -1,5 +1,5 @@
 import express from "express";
-import fetch from "node-fetch"; // make sure you have node-fetch installed
+import fetch from "node-fetch"; // make sure node-fetch is installed
 import cors from "cors";
 
 const app = express();
