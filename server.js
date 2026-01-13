@@ -1,9 +1,16 @@
 import express from "express";
-import fetch from "node-fetch"; // make sure node-fetch is installed
+import fetch from "node-fetch";
 import cors from "cors";
 
 const app = express();
-app.use(cors());
+
+// Allow all origins (dangerous in public, but works for testing)
+app.use(cors({
+  origin: '*',
+  methods: ['GET','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization']
+}));
+
 app.use(express.json());
 
 app.post("/chat", async (req, res) => {
@@ -15,7 +22,6 @@ app.post("/chat", async (req, res) => {
       return res.status(500).json({ error: "OPENAI_API_KEY not set" });
     }
 
-    // Send request to OpenAI
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -47,6 +53,4 @@ app.post("/chat", async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log("Server running on port", PORT);
-});
+app.listen(PORT, () => console.log("Server running on port", PORT));
