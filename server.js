@@ -1,54 +1,72 @@
 import express from "express";
 import cors from "cors";
+import fetch from "node-fetch";
 
 const app = express();
-
 app.use(cors({ origin: "*" }));
 app.use(express.json());
 
-// 🧠 Rule-based response engine
-function getReply(message) {
-  const msg = message.toLowerCase();
+const HF_API_KEY = process.env.HF_API_KEY;
+const MODEL = "mistralai/Mistral-7B-Instruct";
 
-  if (msg.includes("hello") || msg.includes("hi")) {
-    return "Hi! How can I help you today?";
+app.post("/chat", async (req, res) => {
+  try {
+    const userMessage = req.body.message;
+    if (!userMessage) {
+      return res.status(400).json({ error: "No message provided" });
+    }
+
+    if (!HF_API_KEY) {
+      return res.status(500).json({ error: "HF_API_KEY not set" });
+    }
+
+    const prompt = `
+You are TrevorGPT.
+You ONLY answer questions in a Balenciaga fashion, high-fashion, sarcastic, luxury tone.
+
+User: ${userMessage}
+TrevorGPT:
+`;
+
+    const response = await fetch(
+      `https://api-inference.huggingface.co/models/${MODEL}`,
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${HF_API_KEY}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            max_new_tokens: 120,
+            temperature: 0.8
+          }
+        })
+      }
+    );
+
+    const data = await response.json();
+
+    if (data.error) {
+      return res.status(500).json({
+        error: "HF inference error",
+        details: data.error
+      });
+    }
+
+    const reply =
+      Array.isArray(data)
+        ? data[0].generated_text.replace(prompt, "").trim()
+        : "TrevorGPT is thinking about fashion right now.";
+
+    res.json({ reply });
+
+  } catch (err) {
+    res.status(500).json({ error: "Backend error", details: err.message });
   }
-
-  if (msg.includes("help")) {
-    return "Sure! Tell me what you need help with.";
-  }
-
-  if (msg.includes("price") || msg.includes("cost")) {
-    return "Our service is completely free.";
-  }
-
-  if (msg.includes("contact")) {
-    return "You can contact us through the contact page on this website.";
-  }
-
-  if (msg.includes("hours") || msg.includes("open")) {
-    return "We are available 24/7 online.";
-  }
-
-  if (msg.includes("thanks") || msg.includes("thank you")) {
-    return "You're welcome! 😊";
-  }
-
-  return "Sorry, I didn't quite understand that. Try asking something else.";
-}
-
-app.post("/chat", (req, res) => {
-  const userMessage = req.body.message;
-
-  if (!userMessage) {
-    return res.status(400).json({ error: "No message provided" });
-  }
-
-  const reply = getReply(userMessage);
-  res.json({ reply });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () =>
-  console.log("Free rule-based chatbot running on port", PORT)
+app.listen(process.env.PORT || 3000, () =>
+  console.log("TrevorGPT (HF AI) running")
 );
