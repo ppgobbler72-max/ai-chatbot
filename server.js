@@ -1,4 +1,5 @@
 import express from "express";
+import fetch from "node-fetch"; // make sure you have node-fetch installed
 import cors from "cors";
 
 const app = express();
@@ -8,7 +9,13 @@ app.use(express.json());
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message;
+    if (!userMessage) return res.status(400).json({ error: "No message provided" });
 
+    if (!process.env.OPENAI_API_KEY) {
+      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
+    }
+
+    // Send request to OpenAI
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -26,18 +33,20 @@ app.post("/chat", async (req, res) => {
 
     const data = await response.json();
 
-    if (!data.choices) {
+    if (!data.choices || !data.choices[0].message) {
       console.log("OpenAI returned error:", data);
       return res.status(500).json({ error: "OpenAI error" });
     }
 
     res.json({ reply: data.choices[0].message.content });
+
   } catch (err) {
     console.error("Backend error:", err);
     res.status(500).json({ error: "Backend failure" });
   }
 });
 
-app.listen(process.env.PORT || 3000, () => {
-  console.log("Server running on port", process.env.PORT || 3000);
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log("Server running on port", PORT);
 });
