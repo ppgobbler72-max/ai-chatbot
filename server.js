@@ -1,50 +1,47 @@
-import express from "express";
-import fetch from "node-fetch";
+mport express from "express";
 import cors from "cors";
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get("/", (req, res) => res.send("AI Chatbot is running 🤖"));
-
-// Chat endpoint
 app.post("/chat", async (req, res) => {
   try {
-    const { history } = req.body;
-    if (!history || !Array.isArray(history)) {
-      return res.status(400).json({ error: "No chat history provided" });
-    }
-
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "OPENAI_API_KEY not set" });
-    }
+    const userMessage = req.body.message;
+    console.log("User message:", userMessage); // logs what user sent
 
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`
-      },
+@@ -12,23 +18,26 @@ app.post("/chat", async (req, res) => {
       body: JSON.stringify({
         model: "gpt-4o-mini",
-        messages: history
+        messages: [
+          { role: "system", content: "You are a chill, helpful AI chatbot." },
+          { role: "system", content: "You are a helpful AI chatbot." },
+          { role: "user", content: userMessage }
+        ]
       })
     });
 
     const data = await response.json();
+    console.log("OpenAI response:", data); // logs the full response
 
-    if (!data.choices || !data.choices[0].message) {
-      return res.status(500).json({ error: "No reply from OpenAI" });
+    if (!data.choices) {
+      throw new Error("No choices returned from OpenAI");
+      console.log("OpenAI returned error:", data);
+      return res.status(500).json({ error: "OpenAI error" });
     }
 
     res.json({ reply: data.choices[0].message.content });
 
   } catch (err) {
-    console.error(err);
+    console.error("Error in /chat route:", err); // logs the actual error
     res.status(500).json({ error: "Something broke" });
+    console.error("Backend error:", err);
+    res.status(500).json({ error: "Backend failure" });
   }
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(process.env.PORT || 3000, () => {
+  console.log("Server running on port", process.env.PORT || 3000);
+});
