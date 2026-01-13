@@ -3,41 +3,38 @@ import cors from "cors";
 import fetch from "node-fetch";
 
 const app = express();
+
 app.use(cors({ origin: "*" }));
 app.use(express.json());
-
-const HF_API_KEY = process.env.HF_API_KEY;
-const MODEL = "mistralai/Mistral-7B-Instruct";
 
 app.post("/chat", async (req, res) => {
   try {
     const userMessage = req.body.message;
+
     if (!userMessage) {
-      return res.status(400).json({ error: "No message provided" });
+      return res.json({ reply: "TrevorGPT awaits your question." });
     }
 
-    if (!HF_API_KEY) {
-      return res.status(500).json({ error: "HF_API_KEY not set" });
+    if (!process.env.HF_API_KEY) {
+      return res.json({
+        reply: "TrevorGPT has no runway access (HF_API_KEY missing)."
+      });
     }
-
-    const prompt = `
-You are TrevorGPT.
-You ONLY answer questions in a Balenciaga fashion, high-fashion, sarcastic, luxury tone.
-
-User: ${userMessage}
-TrevorGPT:
-`;
 
     const response = await fetch(
-      `https://api-inference.huggingface.co/models/${MODEL}`,
+      "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct",
       {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${HF_API_KEY}`,
+          "Authorization": `Bearer ${process.env.HF_API_KEY}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          inputs: prompt,
+          inputs: `You are TrevorGPT.
+You ONLY answer in a Balenciaga-themed, high-fashion, sarcastic luxury tone.
+
+User: ${userMessage}
+TrevorGPT:`,
           parameters: {
             max_new_tokens: 120,
             temperature: 0.8
@@ -49,24 +46,28 @@ TrevorGPT:
     const data = await response.json();
 
     if (data.error) {
-      return res.status(500).json({
-        error: "HF inference error",
-        details: data.error
+      return res.json({
+        reply: "TrevorGPT is warming up the runway. Try again in a moment."
       });
     }
 
-    const reply =
-      Array.isArray(data)
-        ? data[0].generated_text.replace(prompt, "").trim()
-        : "TrevorGPT is thinking about fashion right now.";
+    const reply = data[0]?.generated_text
+      ?.split("TrevorGPT:")
+      .pop()
+      .trim();
 
-    res.json({ reply });
+    res.json({
+      reply: reply || "TrevorGPT has chosen silence. Very couture."
+    });
 
   } catch (err) {
-    res.status(500).json({ error: "Backend error", details: err.message });
+    res.json({
+      reply: "TrevorGPT encountered runway turbulence."
+    });
   }
 });
 
-app.listen(process.env.PORT || 3000, () =>
-  console.log("TrevorGPT (HF AI) running")
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () =>
+  console.log("TrevorGPT (HF AI) running on port", PORT)
 );
