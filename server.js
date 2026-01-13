@@ -22,7 +22,8 @@ app.post("/chat", async (req, res) => {
     }
 
     const response = await fetch(
-      "https://router.huggingface.co/hf-inference/models/mistralai/Mistral-7B-Instruct",
+      "https://router.huggingface.co/hf-inference/models/google/gemma-2b-it
+",
       {
         method: "POST",
         headers: {
